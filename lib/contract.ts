@@ -12,6 +12,13 @@ export const publicClient = createPublicClient({
   transport: http(RPC_URL),
 });
 
+export interface ScoreEntry {
+  player: `0x${string}`;
+  username: string;
+  score: bigint;
+  timestamp: bigint;
+}
+
 export function getWalletClient() {
   if (typeof window === 'undefined') return null;
   return createWalletClient({
@@ -43,13 +50,14 @@ export async function submitScoreContract(
   return hash;
 }
 
-export async function getScoresContract(offset = 0, limit = 50) {
-  return await publicClient.readContract({
+export async function getScoresContract(offset = 0, limit = 50): Promise<ScoreEntry[]> {
+  const data = await publicClient.readContract({
     address: CONTRACT_ADDRESS,
     abi: SCORE_ABI,
     functionName: 'getScores',
     args: [BigInt(offset), BigInt(limit)],
   });
+  return data as ScoreEntry[];
 }
 
 export async function getScoresCountContract() {

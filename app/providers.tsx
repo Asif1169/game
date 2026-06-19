@@ -4,25 +4,21 @@ import { WagmiProvider, createConfig, http } from 'wagmi';
 import { base } from 'wagmi/chains';
 import { coinbaseWallet, walletConnect } from 'wagmi/connectors';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { MiniKitProvider } from '@coinbase/onchainkit/minikit';
-import { type ReactNode, useState, useEffect } from 'react';
+import { type ReactNode, useState } from 'react';
 
 // Wagmi config — Base mainnet only.
-// - Coinbase Wallet: works inside Base App/Farcaster and standalone.
-// - WalletConnect: QR/multi-wallet fallback (needs a cloud.walletconnect.com id).
-// MiniKit auto-detects when running inside Base App/Farcaster and uses the
-// right transport. NOTE: the CDP projectId belongs on the MiniKitProvider
-// below, NOT on the connectors.
+// Standard web app stack: wagmi + viem + Coinbase Wallet connector.
+// Works in the Base App's in-app browser and standalone.
+// The Base App identifies this app via the `base:app_id` metadata tag
+// in app/page.tsx (registered on Base.dev).
 
 function createWagmiConfig() {
   const WC_PROJECT_ID = process.env.NEXT_PUBLIC_WC_PROJECT_ID ?? '';
-  const CDP_PROJECT_ID = process.env.NEXT_PUBLIC_CDP_PROJECT_ID ?? '';
   return createConfig({
     chains: [base],
     connectors: [
       coinbaseWallet({
         appName: 'Flappy Base',
-        appChainIds: [base.id],
       }),
       // Only register the WalletConnect connector if a project id is configured;
       // walletConnect() throws if projectId is empty.
@@ -55,19 +51,10 @@ export function Providers({ children }: { children: ReactNode }) {
   // render makes the inner AutoConnect connector call setState during render
   // (React 19 + Strict Mode warning).
   const [config] = useState(() => createWagmiConfig());
-  const [cdpProjectId] = useState(() => process.env.NEXT_PUBLIC_CDP_PROJECT_ID ?? '');
 
   return (
     <WagmiProvider config={config}>
-      <QueryClientProvider client={queryClient}>
-        <MiniKitProvider
-          enabled={!!cdpProjectId}
-          projectId={cdpProjectId}
-          notificationProxyUrl="/api/notification"
-        >
-          {children}
-        </MiniKitProvider>
-      </QueryClientProvider>
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
     </WagmiProvider>
   );
 }

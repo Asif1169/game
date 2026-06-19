@@ -26,7 +26,7 @@ export function Leaderboard() {
         const limit = Math.min(50, total);
         const offset = total > limit ? total - limit : 0;
 
-        const data = await getScoresContract(BigInt(offset), BigInt(limit));
+        const data = await getScoresContract(offset, limit);
 
         if (!cancelled) {
           const sorted = [...data].sort((a, b) => Number(b.score - a.score));
