@@ -1,16 +1,12 @@
-'use client';
+import { Metadata } from 'next';
+import HomePage from './HomePage';
 
-import { useMiniKit } from '@coinbase/onchainkit/minikit';
-import { useEffect } from 'react';
-import { FlappyGame } from '@/components/FlappyGame';
+export const metadata: Metadata = {
+  other: {
+    'base:app_id': '6a344a1ec14c8a65a9c38948',
+  },
+};
 
-export default function HomePage() {
-  const { setFrameReady, isFrameReady } = useMiniKit();
-
-  // Mandatory: without this the Farcaster/Base App splash screen never disappears.
-  useEffect(() => {
-    if (!isFrameReady) setFrameReady();
-  }, [isFrameReady, setFrameReady]);
-
-  return <FlappyGame />;
+export default function Home() {
+  return <HomePage />;
 }
