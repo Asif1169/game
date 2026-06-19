@@ -1,0 +1,40 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * OnchainKit theme tokens. We do NOT `@import '@coinbase/onchainkit/styles.css'`
+ * here because that bundled stylesheet ships its own `@layer base{...}` blocks,
+ * which conflict with Tailwind v3's `@tailwind base` directive and break the
+ * PostCSS compilation ("@layer base is used but no matching @tailwind base
+ * directive is present"). OnchainKit React components work without the global
+ * stylesheet; these CSS variables are enough to theme them.
+ */
+:root {
+  --ok-color-accent: #0052ff;
+  --ok-color-accent-foreground: #ffffff;
+  --ok-color-background: #0a0a14;
+  --ok-color-foreground: #ffffff;
+  --ok-color-border: rgba(255, 255, 255, 0.1);
+  --ok-color-secondary: rgba(255, 255, 255, 0.06);
+  --ok-color-secondary-foreground: #ffffff;
+  --ok-border-radius: 0.5rem;
+  --ok-font-family: var(--font-space-grotesk), system-ui, sans-serif;
+}
+
+html,
+body {
+  padding: 0;
+  margin: 0;
+  /* Prevent pull-to-refresh / rubber-band interfering with tap-to-flap. */
+  overscroll-behavior: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* The game canvas should not trigger text selection on rapid tapping. */
+canvas {
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  display: block;
+}
