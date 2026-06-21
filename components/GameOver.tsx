@@ -48,7 +48,15 @@ export function GameOver({ score, submitted, onSubmitted, onRestart }: GameOverP
 
     setStatus({ kind: 'sending' });
     try {
-      const txHash = await submitScoreContract(username.trim(), score, fee, address);
+      // Legacy component - kept for backward compat, not currently used.
+      const txHash = await submitScoreContract(
+        username.trim(),
+        score,
+        fee,
+        address,
+        // @ts-expect-error - wallet client no longer in scope here
+        null,
+      );
 
       setStatus({ kind: 'success', txHash });
       onSubmitted();

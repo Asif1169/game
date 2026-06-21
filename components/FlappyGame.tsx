@@ -1,10 +1,9 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useAccount } from 'wagmi';
+import { useAccount, useWalletClient } from 'wagmi';
 import { ConnectWallet } from '@coinbase/onchainkit/wallet';
-import { useConnect } from 'wagmi';
-import { shortAddr, submitScoreContract } from '@/lib/contract';
+import { shortAddr, submitScoreContract, getFeeContract } from '@/lib/contract';
 
 // ---------------------------------------------------------------------------
 // Exact palette
@@ -121,12 +120,15 @@ export function FlappyGame() {
 
   // Wallet state for submit score
   const { address, isConnected } = useAccount();
-  const { connectors } = useConnect();
+  const { data: walletClient } = useWalletClient();
   const [username, setUsername] = useState('');
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'sending' | 'success' | 'error'>('idle');
   const [submitError, setSubmitError] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [txHash, setTxHash] = useState('');
+  // Actual fee fetched from the smart contract (NOT a hardcoded value)
+  const [contractFee, setContractFee] = useState<string | null>(null);
+  const [feeLoading, setFeeLoading] = useState(true);
 
   // Load best score from smart contract
   useEffect(() => {
@@ -158,6 +160,27 @@ export function FlappyGame() {
         console.warn('Best score fetch failed:', err);
       } finally {
         if (!cancelled) setBestLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Fetch the actual submission fee from the smart contract.
+  // The contract enforces msg.value == submissionFee exactly, so we MUST
+  // send the contract's actual fee, not a hardcoded value.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const fee = await getFeeContract();
+        if (!cancelled) {
+          setContractFee(fee);
+          setFeeLoading(false);
+        }
+      } catch {
+        if (!cancelled) setFeeLoading(false);
       }
     })();
     return () => {
@@ -267,18 +290,29 @@ export function FlappyGame() {
       setSubmitError('Connect wallet first');
       return;
     }
+    if (!walletClient) {
+      setSubmitStatus('error');
+      setSubmitError('Wallet not ready — reconnect');
+      return;
+    }
     const trimmed = username.trim();
     if (!/^[a-zA-Z0-9]{1,20}$/.test(trimmed)) {
       setSubmitStatus('error');
       setSubmitError('Username: 1-20 alphanumeric chars');
       return;
     }
+    if (!contractFee) {
+      setSubmitStatus('error');
+      setSubmitError('Loading contract fee — try again in a moment');
+      return;
+    }
     setSubmitStatus('sending');
     setSubmitError('');
     try {
-      // Use a small default fee; the contract may have its own fee
-      const fee = '0.0001';
-      const hash = await submitScoreContract(trimmed, score, fee, address);
+      // Use the ACTUAL contract fee (not a hardcoded value).
+      // Pass the wagmi wallet client (NOT a fresh viem client — that
+      // would have no connection to the user's wallet provider).
+      const hash = await submitScoreContract(trimmed, score, contractFee, address, walletClient);
       setTxHash(hash);
       setSubmitStatus('success');
       setSubmitted(true);
@@ -286,6 +320,8 @@ export function FlappyGame() {
       const msg = err instanceof Error ? err.message : 'Submit failed';
       if (/reject|denied|cancel/i.test(msg)) {
         setSubmitError('Cancelled');
+      } else if (/Incorrect fee/i.test(msg)) {
+        setSubmitError('Fee mismatch — contract may have been updated');
       } else {
         setSubmitError(msg);
       }
@@ -506,6 +542,8 @@ export function FlappyGame() {
             submitError={submitError}
             submitted={submitted}
             txHash={txHash}
+            contractFee={contractFee}
+            feeLoading={feeLoading}
             onSubmit={handleSubmitScore}
             onPlayAgain={resetGame}
             bestLoading={bestLoading}
@@ -569,6 +607,8 @@ interface PlayAreaProps {
   submitError: string;
   submitted: boolean;
   txHash: string;
+  contractFee: string | null;
+  feeLoading: boolean;
   onSubmit: () => void;
   onPlayAgain: () => void;
   bestLoading: boolean;
@@ -587,12 +627,15 @@ function PlayArea({
   submitError,
   submitted,
   txHash,
+  contractFee,
+  feeLoading,
   onSubmit,
   onPlayAgain,
   bestLoading,
 }: PlayAreaProps) {
   const trimmed = username.trim();
   const usernameValid = /^[a-zA-Z0-9]{1,20}$/.test(trimmed);
+  const canSubmit = isConnected && usernameValid && !feeLoading && !!contractFee && submitStatus !== 'sending';
 
   return (
     <div
@@ -712,7 +755,7 @@ function PlayArea({
                       <button
                         type="button"
                         onClick={onSubmit}
-                        disabled={!usernameValid || submitStatus === 'sending'}
+                        disabled={!canSubmit}
                         className="w-full rounded-lg px-4 py-2 text-sm font-bold text-white disabled:opacity-50 transition-opacity hover:opacity-90"
                         style={{
                           background: COLORS.buttonBlue,
@@ -721,6 +764,7 @@ function PlayArea({
                       >
                         {submitStatus === 'sending' ? 'Submitting…' : 'Submit Score'}
                       </button>
+                      {/* Fee is still used internally for the transaction, just not shown. */}
                     </>
                   ) : (
                     <div className="flex justify-center">

@@ -1,4 +1,4 @@
-import { createPublicClient, createWalletClient, http, parseEther, formatEther, type Address } from 'viem';
+import { createPublicClient, http, parseEther, formatEther, type Address, type WalletClient } from 'viem';
 import { base } from 'viem/chains';
 import abi from '@/contracts/ScoreSubmission.json';
 
@@ -35,22 +35,25 @@ function assertContractAddress() {
   }
 }
 
-export function getWalletClient() {
-  if (typeof window === 'undefined') return null;
-  return createWalletClient({
-    chain: base,
-    transport: http(RPC_URL),
-  });
-}
-
+/**
+ * Submit a score to the contract. The wallet client MUST be the one returned
+ * by wagmi's `useWalletClient()` hook — it carries the connected wallet
+ * provider. Using a fresh `createWalletClient` here won't work because it
+ * has no connection to the user's actual wallet.
+ *
+ * The `fee` argument MUST be exactly the contract's `submissionFee` value
+ * (call `getFeeContract()` to read it). The contract enforces
+ * `require(msg.value == submissionFee, "Incorrect fee")` so any mismatch
+ * reverts the transaction.
+ */
 export async function submitScoreContract(
   username: string,
   score: number,
   fee: string,
-  account: Address
+  account: Address,
+  walletClient: WalletClient,
 ) {
   assertContractAddress();
-  const walletClient = getWalletClient();
   if (!walletClient) throw new Error('No wallet client');
 
   const hash = await walletClient.writeContract({
@@ -60,6 +63,7 @@ export async function submitScoreContract(
     args: [username, BigInt(score)],
     value: parseEther(fee),
     account,
+    chain: base,
   });
 
   return hash;
@@ -67,7 +71,6 @@ export async function submitScoreContract(
 
 // Silent error helper — logs as warn, not error, and doesn't re-throw
 function silentWarn(context: string, err: unknown) {
-  // Only log in dev to avoid noise in production
   if (process.env.NODE_ENV !== 'production') {
     console.warn(`[${context}]`, err instanceof Error ? err.message : err);
   }
