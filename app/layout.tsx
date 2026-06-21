@@ -10,10 +10,66 @@ const lilitaOne = Lilita_One({
   weight: '400',
 });
 
+const APP_URL = process.env.NEXT_PUBLIC_URL || 'https://game-green-xi.vercel.app';
+
 export const metadata: Metadata = {
   title: 'Flappy Base',
-  description: 'A Flappy Bird game on Base. Play, submit your high score on-chain, and compete on the leaderboard.',
+  description: 'A classic Flappy Bird clone on Base. Tap to flap through pipes, submit your high score on-chain, and compete on the global leaderboard.',
   applicationName: 'Flappy Base',
+  openGraph: {
+    title: 'Flappy Base',
+    description: 'A classic Flappy Bird clone on Base. Submit your high score on-chain.',
+    url: APP_URL,
+    siteName: 'Flappy Base',
+    images: [
+      {
+        url: `${APP_URL}/hero.png`,
+        width: 1200,
+        height: 630,
+        alt: 'Flappy Base',
+      },
+    ],
+    locale: 'en_US',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Flappy Base',
+    description: 'A classic Flappy Bird clone on Base. Submit your high score on-chain.',
+    images: [`${APP_URL}/hero.png`],
+  },
+  // Farcaster / Base App mini-app embed metadata
+  other: {
+    'base:app_id': '6a344a1ec14c8a65a9c38948',
+    'fc:miniapp': JSON.stringify({
+      version: '1',
+      imageUrl: `${APP_URL}/hero.png`,
+      button: {
+        title: 'Play Flappy Base',
+        action: {
+          type: 'launch_miniapp',
+          name: 'Flappy Base',
+          url: APP_URL,
+          splashImageUrl: `${APP_URL}/splash.png`,
+          splashBackgroundColor: '#6BBFED',
+        },
+      },
+    }),
+    'fc:frame': JSON.stringify({
+      version: '1',
+      imageUrl: `${APP_URL}/hero.png`,
+      button: {
+        title: 'Play Flappy Base',
+        action: {
+          type: 'launch_frame',
+          name: 'Flappy Base',
+          url: APP_URL,
+          splashImageUrl: `${APP_URL}/splash.png`,
+          splashBackgroundColor: '#6BBFED',
+        },
+      },
+    }),
+  },
 };
 
 export const viewport: Viewport = {
